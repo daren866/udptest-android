@@ -2,6 +2,16 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- 基础网络访问权限 -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 访问WiFi状态和信息，这是获取多播锁的前提 -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <!-- 可选，用于获取更详细的WiFi信息 -->
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+    <!-- 针对 Android 13+ (API 33) 及更高版本的后台 Wi-Fi 设备发现权限（如需要） -->
+    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES"
+        android:required="false" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
