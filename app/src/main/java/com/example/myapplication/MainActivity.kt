@@ -27,13 +27,12 @@ import androidx.compose.ui.unit.sp
 import com.example.myapplication.ui.theme.MyApplicationTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job               // <-- 添加这一行
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
-
 
 class MainActivity : ComponentActivity() {
 
@@ -131,7 +130,7 @@ class MainActivity : ComponentActivity() {
      */
     private fun showToast(message: String) {
         runOnUiThread {
-            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+            Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -139,8 +138,8 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
         // 释放多播锁
         multicastLock?.takeIf { it.isHeld }?.release()
-        // 取消所有协程，关闭 socket
-        udpScope.coroutineContext.cancelChildren()
+        // 取消所有协程子作业（使用兼容写法，避免 cancelChildren 依赖）
+        udpScope.coroutineContext[Job]?.children?.forEach { it.cancel() }
     }
 }
 
