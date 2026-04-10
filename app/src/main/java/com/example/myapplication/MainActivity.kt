@@ -6,7 +6,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -274,7 +272,7 @@ fun CalculatorRow(items: List<String>, onAction: (String) -> Unit) {
     }
 }
 
-// 核心：带有真实点击事件和水波纹效果的按钮组件
+// 核心按钮组件：去除了过期的 rememberRipple，使用 Compose 默认的 M3 点击效果
 @Composable
 fun CalcButton(
     text: String,
@@ -286,15 +284,10 @@ fun CalcButton(
 
     Box(
         contentAlignment = Alignment.Center,
-        // 👇 这里是关键：添加 clickable 和水波纹颜色，让按钮真正可交互
         modifier = modifier
             .background(bgColor, MaterialTheme.shapes.medium)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = rememberRipple(color = Color.White.copy(alpha = 0.2f)), // 点击时的白光反馈
-                onClick = onClick
-            )
-            .padding(4.dp) // 留点边距给圆角背景
+            .clickable { onClick() } // 👈 直接使用最新的 clickable，不传 indication，系统会自动适配最新 M3 规范
+            .padding(4.dp) 
     ) {
         Text(
             text = text,
