@@ -1,11 +1,14 @@
-package com.example.myapplication // ⚠️注意：请保留你项目真实的包名
+package com.example.myapplication // ⚠️第一行请保留你真实的包名！
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -13,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -41,7 +45,6 @@ class MainActivity : ComponentActivity() {
             MyApplicationTheme {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
-                    // 1. 设置顶部标题栏为“计算器”
                     topBar = { CalculatorTopBar() }
                 ) { innerPadding ->
                     CalculatorScreen(
@@ -59,7 +62,7 @@ fun CalculatorTopBar() {
     TopAppBar(
         title = { Text("计算器", fontWeight = FontWeight.Bold) },
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = Color(0xFF1C1C1E), // 深色背景
+            containerColor = Color(0xFF1C1C1E),
             titleContentColor = Color.White
         )
     )
@@ -67,14 +70,14 @@ fun CalculatorTopBar() {
 
 @Composable
 fun CalculatorScreen(modifier: Modifier = Modifier) {
-    // 计算器状态管理
+    // 状态管理
     var displayText by remember { mutableStateOf("0") }
     var currentInput by remember { mutableStateOf("") }
     var firstOperand by remember { mutableStateOf<Double?>(null) }
     var operator by remember { mutableStateOf<String?>(null) }
-    var justCalculated by remember { mutableStateOf(false) }
+    var isNewInput by remember { mutableStateOf(false) } // 标记是否刚刚按了运算符或等号
 
-    // 格式化数字，去掉多余的小数位 .0
+    // 格式化数字，去掉尾随的 .0
     fun formatNumber(num: Double): String {
         return if (num == num.toLong().toDouble()) {
             num.toLong().toString()
@@ -85,97 +88,105 @@ fun CalculatorScreen(modifier: Modifier = Modifier) {
 
     // 核心计算逻辑
     fun calculate() {
-        val secondOperand = currentInput.toDoubleOrNull() ?: return
+        val first = firstOperand ?: return
+        val second = currentInput.toDoubleOrNull() ?: return
+        
         val result = when (operator) {
-            "+" -> firstOperand!! + secondOperand
-            "-" -> firstOperand!! - secondOperand
-            "*" -> firstOperand!! * secondOperand
+            "+" -> first + second
+            "-" -> first - second
+            "*" -> first * second
             "/" -> {
-                if (secondOperand == 0.0) {
+                if (second == 0.0) {
                     displayText = "错误"
                     currentInput = ""
                     firstOperand = null
                     operator = null
-                    justCalculated = true
+                    isNewInput = true
                     return
                 }
-                firstOperand!! / secondOperand
+                first / second
             }
-            else -> secondOperand
+            else -> second
         }
+        
         currentInput = formatNumber(result)
         firstOperand = result
     }
 
-    // 统一处理按钮点击
-    fun onAction(action: String) {
+    // 统一的按钮点击处理
+    fun onButtonClick(action: String) {
         when {
+            // 1. 数字
             action in "0123456789" -> {
-                if (justCalculated) {
-                    currentInput = ""
-                    justCalculated = false
+                if (isNewInput) {
+                    currentInput = if (action == "0") "" else action
+                    isNewInput = false
+                } else {
+                    if (currentInput == "0" && action != "0") currentInput = action
+                    else if (currentInput != "0") currentInput += action
                 }
-                if (currentInput == "0" && action != "0") currentInput = action
-                else if (currentInput != "0") currentInput += action
             }
+            // 2. 小数点
             action == "." -> {
-                if (justCalculated) {
-                    currentInput = "0"
-                    justCalculated = false
-                }
-                if (!currentInput.contains(".")) {
+                if (isNewInput) {
+                    currentInput = "0."
+                    isNewInput = false
+                } else if (!currentInput.contains(".")) {
                     if (currentInput.isEmpty()) currentInput = "0"
                     currentInput += "."
                 }
             }
+            // 3. 运算符
             action in "+-*/" -> {
                 if (currentInput.isNotEmpty()) {
-                    if (firstOperand != null && operator != null && !justCalculated) {
+                    if (firstOperand != null && operator != null && !isNewInput) {
                         calculate()
                     } else {
                         firstOperand = currentInput.toDoubleOrNull()
                     }
                     operator = action
-                    currentInput = ""
-                    justCalculated = false
+                    isNewInput = true
                 }
             }
+            // 4. 等号
             action == "=" -> {
                 if (currentInput.isNotEmpty() && firstOperand != null && operator != null) {
                     calculate()
                     operator = null
-                    justCalculated = true
+                    isNewInput = true
                 }
             }
+            // 5. 清除
             action == "C" -> {
                 currentInput = ""
                 firstOperand = null
                 operator = null
-                justCalculated = false
+                isNewInput = false
             }
+            // 6. 退格
             action == "⌫" -> {
-                if (!justCalculated && currentInput.isNotEmpty()) {
+                if (!isNewInput && currentInput.isNotEmpty()) {
                     currentInput = currentInput.dropLast(1)
                 }
             }
         }
 
-        // 更新屏幕显示的文字
-        displayText = if (currentInput.isEmpty() && !justCalculated) {
-            firstOperand?.let { formatNumber(it) } ?: "0"
-        } else {
-            currentInput.ifEmpty { "0" }
+        // 刷新屏幕显示文字
+        displayText = when {
+            currentInput.isEmpty() && !isNewInput -> "0"
+            currentInput.isEmpty() && isNewInput && firstOperand != null -> formatNumber(firstOperand!!)
+            else -> currentInput.ifEmpty { "0" }
         }
     }
 
-    // UI 绘制
+    // ================= UI 绘制部分 =================
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFF1C1C1E)), // 整体深色背景
+            .background(Color(0xFF1C1C1E)),
         horizontalAlignment = Alignment.End
     ) {
-        // 显示屏区域
+        // 显示屏
         Text(
             text = displayText,
             color = Color.White,
@@ -184,81 +195,66 @@ fun CalculatorScreen(modifier: Modifier = Modifier) {
             textAlign = TextAlign.End,
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f) // 占据剩余的所有空间
-                .padding(horizontal = 24.dp, vertical = 16.dp)
+                .weight(1f)
+                .padding(horizontal = 24.dp)
                 .padding(bottom = 16.dp)
         )
 
-        // 按钮区域
+        // 按钮区
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // 第 1 行: C, ⌫, /, *
-            CalculatorRow(
-                items = listOf("C", "⌫", "/", "*"),
-                onAction = ::onAction
-            )
-            // 第 2 行: 7, 8, 9, -
-            CalculatorRow(
-                items = listOf("7", "8", "9", "-"),
-                onAction = ::onAction
-            )
-            // 第 3 行: 4, 5, 6, +
-            CalculatorRow(
-                items = listOf("4", "5", "6", "+"),
-                onAction = ::onAction
-            )
+            // 前 4 行常规布局
+            CalculatorRow(items = listOf("C", "⌫", "/", "*")) { onButtonClick(it) }
+            CalculatorRow(items = listOf("7", "8", "9", "-")) { onButtonClick(it) }
+            CalculatorRow(items = listOf("4", "5", "6", "+")) { onButtonClick(it) }
 
-            // 特殊处理最后两行 (处理 0 跨两列，= 跨两行)
+            // 最后 2 行特殊布局 (0跨两列，=跨两行)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(160.dp), // 固定两行按钮的总高度
+                    .height(160.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // 左侧数字区 (包含 1,2,3 和 0,.)
+                // 左侧 (1,2,3 和 0,.)
                 Column(
-                    modifier = Modifier
-                        .weight(3f) // 占 3/4 宽度
-                        .fillMaxHeight(),
+                    modifier = Modifier.weight(3f).fillMaxHeight(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Row(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        CalcButton("1", Color(0xFF333333), Modifier.weight(1f)) { onAction("1") }
-                        CalcButton("2", Color(0xFF333333), Modifier.weight(1f)) { onAction("2") }
-                        CalcButton("3", Color(0xFF333333), Modifier.weight(1f)) { onAction("3") }
+                        CalcButton("1", Color(0xFF333333), Modifier.weight(1f)) { onButtonClick("1") }
+                        CalcButton("2", Color(0xFF333333), Modifier.weight(1f)) { onButtonClick("2") }
+                        CalcButton("3", Color(0xFF333333), Modifier.weight(1f)) { onButtonClick("3") }
                     }
                     Row(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        CalcButton("0", Color(0xFF333333), Modifier.weight(2f)) { onAction("0") } // 0 占两列
-                        CalcButton(".", Color(0xFF333333), Modifier.weight(1f)) { onAction(".") }
+                        CalcButton("0", Color(0xFF333333), Modifier.weight(2f)) { onButtonClick("0") }
+                        CalcButton(".", Color(0xFF333333), Modifier.weight(1f)) { onButtonClick(".") }
                     }
                 }
 
-                // 右侧等号区 (跨两行)
+                // 右侧等号 (跨两行)
                 CalcButton(
                     text = "=",
-                    bgColor = Color(0xFFFF9500), // 橙色
-                    modifier = Modifier
-                        .weight(1f) // 占 1/4 宽度
-                        .fillMaxHeight() // 高度撑满两行
+                    bgColor = Color(0xFFFF9500),
+                    modifier = Modifier.weight(1f).fillMaxHeight()
                 ) {
-                    onAction("=")
+                    onButtonClick("=")
                 }
             }
         }
     }
 }
 
-// 普通的四列行组件
+// 常规的 4 列按钮行
 @Composable
 fun CalculatorRow(items: List<String>, onAction: (String) -> Unit) {
     Row(
@@ -269,16 +265,16 @@ fun CalculatorRow(items: List<String>, onAction: (String) -> Unit) {
     ) {
         items.forEach { item ->
             val color = when {
-                item in listOf("C", "⌫") -> Color(0xFFA5A5A5) // 浅灰
-                item in "+-*/" -> Color(0xFFFF9500)           // 橙色
-                else -> Color(0xFF333333)                     // 深灰
+                item in listOf("C", "⌫") -> Color(0xFFA5A5A5)
+                item in "+-*/" -> Color(0xFFFF9500)
+                else -> Color(0xFF333333)
             }
             CalcButton(item, color, Modifier.weight(1f)) { onAction(item) }
         }
     }
 }
 
-// 单个按钮组件
+// 核心：带有真实点击事件和水波纹效果的按钮组件
 @Composable
 fun CalcButton(
     text: String,
@@ -288,23 +284,23 @@ fun CalcButton(
 ) {
     val textColor = if (bgColor == Color(0xFFA5A5A5)) Color.Black else Color.White
 
-    Text(
-        text = text,
-        color = textColor,
-        fontSize = if (text == "⌫") 24.sp else 28.sp,
-        fontWeight = FontWeight.Normal,
-        textAlign = TextAlign.Center,
+    Box(
+        contentAlignment = Alignment.Center,
+        // 👇 这里是关键：添加 clickable 和水波纹颜色，让按钮真正可交互
         modifier = modifier
             .background(bgColor, MaterialTheme.shapes.medium)
-            .padding(vertical = 8.dp)
-            .fillMaxSize() // 让文字在背景块中居中
-            .then(
-                // 添加点击效果（简单的修改透明度代替波纹，避免深色背景波纹难看）
-                Modifier.padding(0.dp) // 保证 Modifier 链不断
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = rememberRipple(color = Color.White.copy(alpha = 0.2f)), // 点击时的白光反馈
+                onClick = onClick
             )
-    )
-    // 注意：这里为了代码极简，去掉了带有波纹效果的 Button 组件，
-    // 直接用 Text + Background 实现纯色块按钮。如需点击反馈，可以使用 interactionSource。
-    // 实际上在纯代码中，可以直接给上面的 Text 加上 clickable 修饰符：
-    // .clickable { onClick() }
+            .padding(4.dp) // 留点边距给圆角背景
+    ) {
+        Text(
+            text = text,
+            color = textColor,
+            fontSize = if (text == "⌫") 24.sp else 28.sp,
+            fontWeight = FontWeight.W500
+        )
+    }
 }
