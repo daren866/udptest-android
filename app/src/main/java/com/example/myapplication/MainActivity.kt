@@ -50,11 +50,13 @@ class MainActivity : ComponentActivity() {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     topBar = {
+                        // 只在这里设置一个标题栏
                         CalculatorTopBar(
                             onMenuAction = { /* 顶层暂不处理 */ }
                         )
                     }
                 ) { innerPadding ->
+                    // 移除内部的 CalculatorTopBar 调用
                     CalculatorScreen(
                         modifier = Modifier.padding(innerPadding)
                     )
@@ -85,13 +87,11 @@ fun CalculatorTopBar(onMenuAction: (String) -> Unit) {
                     )
                 }
 
-                // 🔥 这里已经删掉 textColor 参数，只保留 containerColor
                 DropdownMenu(
                     expanded = showMenu,
                     onDismissRequest = { showMenu = false },
                     containerColor = Color(0xFF2C2C2E)
                 ) {
-                    // 如果你希望菜单文字是白色，可以在 DropdownMenuItem 的文字组件里设置 color = Color.White
                     DropdownMenuItem(
                         text = {
                             Text("重置计算器", color = Color.White)
@@ -238,7 +238,7 @@ fun CalculatorScreen(modifier: Modifier = Modifier) {
             .background(Color(0xFF1C1C1E)),
         horizontalAlignment = Alignment.End
     ) {
-        CalculatorTopBar(onMenuAction = { handleMenuAction(it) })
+        // 这里不再调用 CalculatorTopBar，因为已经在 Scaffold 中设置了
 
         // 显示屏
         Text(
