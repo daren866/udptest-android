@@ -15,7 +15,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -43,7 +49,11 @@ class MainActivity : ComponentActivity() {
             MyApplicationTheme {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
-                    topBar = { CalculatorTopBar() }
+                    topBar = { 
+                        CalculatorTopBar(
+                            onMenuAction = { /* 顶层不需要处理，传给 Screen */ }
+                        ) 
+                    }
                 ) { innerPadding ->
                     CalculatorScreen(
                         modifier = Modifier.padding(innerPadding)
@@ -56,13 +66,52 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CalculatorTopBar() {
+fun CalculatorTopBar(onMenuAction: (String) -> Unit) {
+    // 控制下拉菜单显示与隐藏的状态
+    var showMenu by remember { mutableStateOf(false) }
+
     TopAppBar(
         title = { Text("计算器", fontWeight = FontWeight.Bold) },
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = Color(0xFF1C1C1E),
             titleContentColor = Color.White
-        )
+        ),
+        // 右上角的动作区
+        actions = {
+            Box {
+                // 安卓自带的三个点图标 (MoreVert)
+                IconButton(onClick = { showMenu = true }) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = "打开菜单",
+                        tint = Color.White // 设置为白色，适配深色顶栏
+                    )
+                }
+
+                // 下拉菜单组件
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false }, // 点击菜单外部时关闭
+                    containerColor = Color(0xFF2C2C2E), // 菜单背景色
+                    textColor = Color.White              // 菜单文字颜色
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("重置计算器") },
+                        onClick = {
+                            showMenu = false
+                            onMenuAction("RESET")
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("关于") },
+                        onClick = {
+                            showMenu = false
+                            onMenuAction("ABOUT")
+                        }
+                    )
+                }
+            }
+        }
     )
 }
 
@@ -73,7 +122,21 @@ fun CalculatorScreen(modifier: Modifier = Modifier) {
     var currentInput by remember { mutableStateOf("") }
     var firstOperand by remember { mutableStateOf<Double?>(null) }
     var operator by remember { mutableStateOf<String?>(null) }
-    var isNewInput by remember { mutableStateOf(false) } // 标记是否刚刚按了运算符或等号
+    var isNewInput by remember { mutableStateOf(false) }
+    
+    // 处理菜单事件的回调
+    fun handleMenuAction(action: String) {
+        when (action) {
+            "RESET" -> {
+                currentInput = ""
+                firstOperand = null
+                operator = null
+                isNewInput = false
+                displayText = "0"
+            }
+            // 如果以后需要加"关于"弹窗，可以在这里处理 "ABOUT"
+        }
+    }
 
     // 格式化数字，去掉尾随的 .0
     fun formatNumber(num: Double): String {
@@ -114,7 +177,6 @@ fun CalculatorScreen(modifier: Modifier = Modifier) {
     // 统一的按钮点击处理
     fun onButtonClick(action: String) {
         when {
-            // 1. 数字
             action in "0123456789" -> {
                 if (isNewInput) {
                     currentInput = if (action == "0") "" else action
@@ -124,7 +186,6 @@ fun CalculatorScreen(modifier: Modifier = Modifier) {
                     else if (currentInput != "0") currentInput += action
                 }
             }
-            // 2. 小数点
             action == "." -> {
                 if (isNewInput) {
                     currentInput = "0."
@@ -134,7 +195,6 @@ fun CalculatorScreen(modifier: Modifier = Modifier) {
                     currentInput += "."
                 }
             }
-            // 3. 运算符
             action in "+-*/" -> {
                 if (currentInput.isNotEmpty()) {
                     if (firstOperand != null && operator != null && !isNewInput) {
@@ -146,7 +206,6 @@ fun CalculatorScreen(modifier: Modifier = Modifier) {
                     isNewInput = true
                 }
             }
-            // 4. 等号
             action == "=" -> {
                 if (currentInput.isNotEmpty() && firstOperand != null && operator != null) {
                     calculate()
@@ -154,14 +213,12 @@ fun CalculatorScreen(modifier: Modifier = Modifier) {
                     isNewInput = true
                 }
             }
-            // 5. 清除
             action == "C" -> {
                 currentInput = ""
                 firstOperand = null
                 operator = null
                 isNewInput = false
             }
-            // 6. 退格
             action == "⌫" -> {
                 if (!isNewInput && currentInput.isNotEmpty()) {
                     currentInput = currentInput.dropLast(1)
@@ -169,7 +226,6 @@ fun CalculatorScreen(modifier: Modifier = Modifier) {
             }
         }
 
-        // 刷新屏幕显示文字
         displayText = when {
             currentInput.isEmpty() && !isNewInput -> "0"
             currentInput.isEmpty() && isNewInput && firstOperand != null -> formatNumber(firstOperand!!)
@@ -184,6 +240,9 @@ fun CalculatorScreen(modifier: Modifier = Modifier) {
             .background(Color(0xFF1C1C1E)),
         horizontalAlignment = Alignment.End
     ) {
+        // 将带有菜单的 TopBar 放在这里，方便直接调用 handleMenuAction
+        CalculatorTopBar(onMenuAction = { handleMenuAction(it) })
+
         // 显示屏
         Text(
             text = displayText,
@@ -205,19 +264,16 @@ fun CalculatorScreen(modifier: Modifier = Modifier) {
                 .padding(horizontal = 8.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // 前 4 行常规布局
             CalculatorRow(items = listOf("C", "⌫", "/", "*")) { onButtonClick(it) }
             CalculatorRow(items = listOf("7", "8", "9", "-")) { onButtonClick(it) }
             CalculatorRow(items = listOf("4", "5", "6", "+")) { onButtonClick(it) }
 
-            // 最后 2 行特殊布局 (0跨两列，=跨两行)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(160.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // 左侧 (1,2,3 和 0,.)
                 Column(
                     modifier = Modifier.weight(3f).fillMaxHeight(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -239,7 +295,6 @@ fun CalculatorScreen(modifier: Modifier = Modifier) {
                     }
                 }
 
-                // 右侧等号 (跨两行)
                 CalcButton(
                     text = "=",
                     bgColor = Color(0xFFFF9500),
@@ -252,7 +307,6 @@ fun CalculatorScreen(modifier: Modifier = Modifier) {
     }
 }
 
-// 常规的 4 列按钮行
 @Composable
 fun CalculatorRow(items: List<String>, onAction: (String) -> Unit) {
     Row(
@@ -272,7 +326,6 @@ fun CalculatorRow(items: List<String>, onAction: (String) -> Unit) {
     }
 }
 
-// 核心按钮组件：去除了过期的 rememberRipple，使用 Compose 默认的 M3 点击效果
 @Composable
 fun CalcButton(
     text: String,
@@ -286,7 +339,7 @@ fun CalcButton(
         contentAlignment = Alignment.Center,
         modifier = modifier
             .background(bgColor, MaterialTheme.shapes.medium)
-            .clickable { onClick() } // 👈 直接使用最新的 clickable，不传 indication，系统会自动适配最新 M3 规范
+            .clickable { onClick() } 
             .padding(4.dp) 
     ) {
         Text(
