@@ -1,4 +1,4 @@
-package com.example.myapplication // ⚠️第一行请保留你真实的包名！
+package com.example.myapplication // ⚠️保留你真实的包名
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -49,10 +49,10 @@ class MainActivity : ComponentActivity() {
             MyApplicationTheme {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
-                    topBar = { 
+                    topBar = {
                         CalculatorTopBar(
-                            onMenuAction = { /* 顶层不需要处理，传给 Screen */ }
-                        ) 
+                            onMenuAction = { /* 顶层暂不处理 */ }
+                        )
                     }
                 ) { innerPadding ->
                     CalculatorScreen(
@@ -67,7 +67,6 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalculatorTopBar(onMenuAction: (String) -> Unit) {
-    // 控制下拉菜单显示与隐藏的状态
     var showMenu by remember { mutableStateOf(false) }
 
     TopAppBar(
@@ -76,34 +75,36 @@ fun CalculatorTopBar(onMenuAction: (String) -> Unit) {
             containerColor = Color(0xFF1C1C1E),
             titleContentColor = Color.White
         ),
-        // 右上角的动作区
         actions = {
             Box {
-                // 安卓自带的三个点图标 (MoreVert)
                 IconButton(onClick = { showMenu = true }) {
                     Icon(
                         imageVector = Icons.Default.MoreVert,
                         contentDescription = "打开菜单",
-                        tint = Color.White // 设置为白色，适配深色顶栏
+                        tint = Color.White
                     )
                 }
 
-                // 下拉菜单组件
+                // 🔥 这里已经删掉 textColor 参数，只保留 containerColor
                 DropdownMenu(
                     expanded = showMenu,
-                    onDismissRequest = { showMenu = false }, // 点击菜单外部时关闭
-                    containerColor = Color(0xFF2C2C2E), // 菜单背景色
-                    textColor = Color.White              // 菜单文字颜色
+                    onDismissRequest = { showMenu = false },
+                    containerColor = Color(0xFF2C2C2E)
                 ) {
+                    // 如果你希望菜单文字是白色，可以在 DropdownMenuItem 的文字组件里设置 color = Color.White
                     DropdownMenuItem(
-                        text = { Text("重置计算器") },
+                        text = {
+                            Text("重置计算器", color = Color.White)
+                        },
                         onClick = {
                             showMenu = false
                             onMenuAction("RESET")
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("关于") },
+                        text = {
+                            Text("关于", color = Color.White)
+                        },
                         onClick = {
                             showMenu = false
                             onMenuAction("ABOUT")
@@ -117,14 +118,13 @@ fun CalculatorTopBar(onMenuAction: (String) -> Unit) {
 
 @Composable
 fun CalculatorScreen(modifier: Modifier = Modifier) {
-    // 状态管理
     var displayText by remember { mutableStateOf("0") }
     var currentInput by remember { mutableStateOf("") }
     var firstOperand by remember { mutableStateOf<Double?>(null) }
     var operator by remember { mutableStateOf<String?>(null) }
     var isNewInput by remember { mutableStateOf(false) }
-    
-    // 处理菜单事件的回调
+
+    // 菜单事件处理
     fun handleMenuAction(action: String) {
         when (action) {
             "RESET" -> {
@@ -134,11 +134,10 @@ fun CalculatorScreen(modifier: Modifier = Modifier) {
                 isNewInput = false
                 displayText = "0"
             }
-            // 如果以后需要加"关于"弹窗，可以在这里处理 "ABOUT"
         }
     }
 
-    // 格式化数字，去掉尾随的 .0
+    // 格式化数字，去掉尾随 .0
     fun formatNumber(num: Double): String {
         return if (num == num.toLong().toDouble()) {
             num.toLong().toString()
@@ -151,7 +150,7 @@ fun CalculatorScreen(modifier: Modifier = Modifier) {
     fun calculate() {
         val first = firstOperand ?: return
         val second = currentInput.toDoubleOrNull() ?: return
-        
+
         val result = when (operator) {
             "+" -> first + second
             "-" -> first - second
@@ -169,7 +168,7 @@ fun CalculatorScreen(modifier: Modifier = Modifier) {
             }
             else -> second
         }
-        
+
         currentInput = formatNumber(result)
         firstOperand = result
     }
@@ -233,14 +232,12 @@ fun CalculatorScreen(modifier: Modifier = Modifier) {
         }
     }
 
-    // ================= UI 绘制部分 =================
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(Color(0xFF1C1C1E)),
         horizontalAlignment = Alignment.End
     ) {
-        // 将带有菜单的 TopBar 放在这里，方便直接调用 handleMenuAction
         CalculatorTopBar(onMenuAction = { handleMenuAction(it) })
 
         // 显示屏
@@ -339,8 +336,8 @@ fun CalcButton(
         contentAlignment = Alignment.Center,
         modifier = modifier
             .background(bgColor, MaterialTheme.shapes.medium)
-            .clickable { onClick() } 
-            .padding(4.dp) 
+            .clickable { onClick() }
+            .padding(4.dp)
     ) {
         Text(
             text = text,
