@@ -50,7 +50,7 @@ class MainActivity : ComponentActivity() {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     topBar = {
-                        // 在这里传递菜单事件处理器
+                        // 在这里创建一个能正确传递事件的 CalculatorTopBar
                         CalculatorTopBar(
                             onMenuAction = { action ->
                                 // 顶层不处理，但需要传递给 Screen
