@@ -50,15 +50,25 @@ class MainActivity : ComponentActivity() {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     topBar = {
-                        // 只在这里设置一个标题栏
+                        // 在这里传递菜单事件处理器
                         CalculatorTopBar(
-                            onMenuAction = { /* 顶层暂不处理 */ }
+                            onMenuAction = { action ->
+                                // 顶层不处理，但需要传递给 Screen
+                                // 这里只是示例，实际在 Screen 中处理
+                            }
                         )
                     }
                 ) { innerPadding ->
-                    // 移除内部的 CalculatorTopBar 调用
+                    // 将菜单事件处理器传递给 CalculatorScreen
                     CalculatorScreen(
-                        modifier = Modifier.padding(innerPadding)
+                        modifier = Modifier.padding(innerPadding),
+                        onMenuAction = { action ->
+                            when (action) {
+                                "RESET" -> {
+                                    // 重置逻辑在这里
+                                }
+                            }
+                        }
                     )
                 }
             }
@@ -117,7 +127,10 @@ fun CalculatorTopBar(onMenuAction: (String) -> Unit) {
 }
 
 @Composable
-fun CalculatorScreen(modifier: Modifier = Modifier) {
+fun CalculatorScreen(
+    modifier: Modifier = Modifier,
+    onMenuAction: (String) -> Unit
+) {
     var displayText by remember { mutableStateOf("0") }
     var currentInput by remember { mutableStateOf("") }
     var firstOperand by remember { mutableStateOf<Double?>(null) }
@@ -238,8 +251,6 @@ fun CalculatorScreen(modifier: Modifier = Modifier) {
             .background(Color(0xFF1C1C1E)),
         horizontalAlignment = Alignment.End
     ) {
-        // 这里不再调用 CalculatorTopBar，因为已经在 Scaffold 中设置了
-
         // 显示屏
         Text(
             text = displayText,
